@@ -1,0 +1,7 @@
+; $Id:
+name = "Binclear"
+description = "Select bins for which you want to clear cache."
+core = 7.x
+package = Cache
+files[] = binclear.module
+version = 7.x

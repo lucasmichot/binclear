@@ -1,0 +1,83 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Functions for the binclear module.
+ */
+
+/**
+ * Implements hook_form_ID_alter() for system_performance_settings form.
+ */
+function binclear_form_system_performance_settings_alter(&$form, $form_state, $form_id) {
+  $form['clear_cache']['binclear_bins'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Bins to clear'),
+    '#options' => _binclear_bins(),
+    '#default_value' => _binclear_bins(),
+    '#weight' => -1,
+  );
+  $form['clear_cache']['clear_bins'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clear only selected bins'),
+    '#submit' => array('binclear_clear_cache_submit'),
+    '#weight' => 1,
+  );
+}
+
+/**
+ * Get available bins
+ */
+function _binclear_bins() {
+  $bins = variable_get('binclear_bins', NULL);
+  if (empty($bins)) {
+    $bins = array_merge(module_invoke_all('flush_caches'), array('cache', 'cache_bootstrap', 'cache_filter', 'cache_page'));
+    $bins = array_combine($bins, $bins);
+    asort($bins);
+    variable_set('binclear_bins', $bins);
+  }
+  return $bins;
+}
+
+/**
+ * Clear a bin
+ */
+function _binclear_bin_clear($bin) {
+  cache_clear_all('*', $bin, TRUE);
+  watchdog('binclear', 'Cache cleared for !bin', array('!bin' => $bin), WATCHDOG_INFO, NULL);
+}
+
+/**
+ * Submit function for clear_bins in system_performance_settings form
+ */
+function binclear_clear_cache_submit(&$form, &$form_state) {
+	$bins = array_values(array_filter($form_state['values']['binclear_bins']));
+  array_map('_binclear_bin_clear', $bins);
+  drupal_set_message(t('Cache cleared for the select bins.'));
+}
+
+/**
+ * Implements hook_modules_enabled()
+ **/
+function binclear_modules_enabled($modules) {
+  if (count(array_merge($modules, module_implements('flush_caches')))) {
+    variable_del('binclear_bins');
+  }
+}
+
+/**
+ * Implements hook_modules_disabled()
+ **/
+function binclear_modules_disabled($modules) {
+  if (count(array_merge($modules, module_implements('flush_caches')))) {
+    variable_del('binclear_bins');
+  }
+}
+
+/**
+ * Implements hook_disable()
+ **/
+function binclear_disable() {
+  variable_del('binclear_bins');
+}
+
